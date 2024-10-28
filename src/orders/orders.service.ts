@@ -13,7 +13,8 @@ import {
 import { PrismaClient } from '@prisma/client';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { NATS_SERVICE } from 'src/config';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom } from 'rxjs';
+import { OrderWithProducts } from './interfaces/order-with-products.interface';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -31,6 +32,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
   async create(createOrderDto: CreateOrderDto) {
     const { items } = createOrderDto;
     const productIds = items.map((item) => item.productId);
+
     const products: any[] = await firstValueFrom(
       this.client.send('validateProducts', productIds),
     );
@@ -75,14 +77,12 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
     const response = {
       ...order,
-      orderItem: order.OrderItem.map((orderItem) => ({
+      OrderItem: order.OrderItem.map((orderItem) => ({
         ...orderItem,
         name: products.find((product) => product.id === orderItem.productId)
           .name,
       })),
     };
-
-    delete response.OrderItem;
 
     return response;
   }
@@ -134,14 +134,12 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
     const response = {
       ...order,
-      orderItem: order.OrderItem.map((orderItem) => ({
+      OrderItem: order.OrderItem.map((orderItem) => ({
         ...orderItem,
         name: products.find((product) => product.id === orderItem.productId)
           .name,
       })),
     };
-
-    delete response.OrderItem;
 
     return response;
   }
@@ -159,5 +157,25 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       where: { id },
       data: { status: status },
     });
+  }
+
+  async createSession(order: OrderWithProducts) {
+    const session = this.client
+      .send('create.session', {
+        orderId: order.id,
+        currency: 'usd',
+        items: order.OrderItem.map((item) => ({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+      })
+      .pipe(
+        catchError((error) => {
+          throw new RpcException(error);
+        }),
+      );
+
+    return session;
   }
 }
