@@ -8,6 +8,7 @@ import {
 import {
   ChangeOrderStatusDto,
   CreateOrderDto,
+  OrderPayment,
   PaginationOrderDto,
 } from './dto';
 import { PrismaClient } from '@prisma/client';
@@ -177,5 +178,24 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       );
 
     return session;
+  }
+
+  async orderPayment(orderPayment: OrderPayment) {
+    const order = await this.order.update({
+      where: { id: orderPayment.orderId },
+      data: {
+        paid: true,
+        paidId: orderPayment.paidId,
+        paidAt: new Date(),
+        status: 'PAID',
+        OrderReceipt: {
+          create: {
+            receiptUrl: orderPayment.receiptUrl,
+          },
+        },
+      },
+    });
+
+    return order;
   }
 }
