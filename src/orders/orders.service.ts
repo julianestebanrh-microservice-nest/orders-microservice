@@ -35,7 +35,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     const productIds = items.map((item) => item.productId);
 
     const products: any[] = await firstValueFrom(
-      this.client.send('validateProducts', productIds),
+      this.client.send('product.validate', productIds),
     );
 
     const totalAmount = items.reduce((acc, orderItem) => {
@@ -130,7 +130,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
     const productIds = order.OrderItem.map((item) => item.productId);
     const products: any[] = await firstValueFrom(
-      this.client.send('validateProducts', productIds),
+      this.client.send('product.validate', productIds),
     );
 
     const response = {
@@ -162,7 +162,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
   async createSession(order: OrderWithProducts) {
     const session = this.client
-      .send('create.session', {
+      .send('payment.create.session', {
         orderId: order.id,
         currency: 'usd',
         items: order.OrderItem.map((item) => ({

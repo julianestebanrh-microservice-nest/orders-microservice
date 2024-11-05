@@ -12,26 +12,24 @@ import {
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  @MessagePattern('createOrder')
+  @MessagePattern('order.create')
   async create(@Payload() createOrderDto: CreateOrderDto) {
     const order = await this.ordersService.create(createOrderDto);
-
     const createSession = await this.ordersService.createSession(order);
-
-    return order;
+    return createSession;
   }
 
-  @MessagePattern('findAllOrders')
+  @MessagePattern('order.find.all')
   findAll(@Payload() paginationDto: PaginationOrderDto) {
     return this.ordersService.findAll(paginationDto);
   }
 
-  @MessagePattern('findOneOrder')
+  @MessagePattern('order.find.one')
   findOne(@Payload('id', ParseUUIDPipe) id: string) {
     return this.ordersService.findOne(id);
   }
 
-  @MessagePattern('changeOrderStatus')
+  @MessagePattern('order.change.status')
   changeOrderStatus(@Payload() changeOrderStatusDto: ChangeOrderStatusDto) {
     return this.ordersService.changeOrderStatus(changeOrderStatusDto);
   }

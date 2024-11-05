@@ -1,0 +1,71 @@
+# Dependencies
+FROM node:21-alpine3.19 as deps
+
+# We enable the pnpm
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+# Working directory
+WORKDIR /usr/src/app
+# We copy the package.json package-lock.json
+COPY package*.json ./
+# Install node dependencies
+RUN pnpm install
+
+
+# Builder 
+FROM node:21-alpine3.19 as build
+
+# We enable the pnpm
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+# Working directory
+WORKDIR /usr/src/app
+
+#  Arguments
+ARG ORDER_MS_DATABASE_URL
+ENV DATABASE_URL=$ORDER_MS_DATABASE_URL
+
+# We copy the node_modules from deps
+COPY  --from=deps /usr/src/app/node_modules ./node_modules
+# We copy the entire source code of the application
+COPY . .
+
+# Generate migrations and prisma client 
+RUN npx prisma migrate deploy
+# RUN npx prisma generate
+
+# Compile the project
+RUN pnpm run build
+
+#  Install dependencies production
+RUN pnpm ci -f --only=production && pnpm cache clean --force
+
+
+
+
+# Image
+FROM node:21-alpine3.19 as prod
+
+# Working directory
+WORKDIR /usr/src/app
+
+# We copy the node_modules from build
+COPY  --from=build /usr/src/app/node_modules ./node_modules
+# We copy the folder dist from build
+COPY  --from=build /usr/src/app/dist ./dist
+# We copy the folder prisma from build
+COPY --from=build /usr/src/app/prisma ./prisma
+
+# Enviroment 
+ENV NODE_ENV=production
+# User without permission
+USER node
+# Port expose
+EXPOSE 3000
+
+# Start the server using the production build
+CMD ["node", "dist/main.js"]
